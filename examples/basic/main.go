@@ -6,7 +6,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/ethanefung/bubble-datepicker"
+	datepicker "github.com/ethanefung/bubble-datepicker"
 )
 
 type model struct {
@@ -16,6 +16,7 @@ type model struct {
 func initialModel() tea.Model {
 	now := time.Now()
 	dp := datepicker.New(now)
+	//dp := datepicker.New(now, datepicker.WithMondayFirst())
 	dp.SelectDate()
 
 	return model{

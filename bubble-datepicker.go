@@ -79,6 +79,16 @@ func DefaultStyles() Styles {
 	}
 }
 
+// Option configures a datepicker Model.
+type Option func(*Model)
+
+// WithMondayFirst configures the calendar to start weeks on Monday.
+func WithMondayFirst() Option {
+	return func(m *Model) {
+		m.MondayFirst = true
+	}
+}
+
 // Model is a struct that contains the state of the datepicker component and satisfies
 // the `tea.Model` interface
 type Model struct {
@@ -96,18 +106,25 @@ type Model struct {
 
 	// Selected indicates whether a date is Selected in the datepicker
 	Selected bool
+
+	// MondayFirst indicates whether the calendar should start weeks on Monday
+	MondayFirst bool
 }
 
 // New returns the Model of the datepicker
-func New(time time.Time) Model {
-	return Model{
+func New(time time.Time, opts ...Option) Model {
+	m := Model{
 		Time:   time,
 		KeyMap: DefaultKeyMap(),
 		Styles: DefaultStyles(),
 
-		Focused: FocusCalendar,
+		Focused:  FocusCalendar,
 		Selected: false,
 	}
+	for _, opt := range opts {
+		opt(&m)
+	}
+	return m
 }
 
 // Init satisfies the `tea.Model` interface. This sends a nil cmd
@@ -232,58 +249,58 @@ func (m Model) View() string {
 
 	// get all the dates of the current month
 	firstDayOfTheMonth := time.Date(year, month, 1, 0, 0, 0, 0, time.UTC)
-
-	lastSundayOfLastMonth := firstDayOfTheMonth.AddDate(0, 0, -1)
-	for lastSundayOfLastMonth.Weekday() != time.Sunday {
-		lastSundayOfLastMonth = lastSundayOfLastMonth.AddDate(0, 0, -1)
-	}
-
 	lastDayOfTheMonth := firstDayOfTheMonth.AddDate(0, 1, -1)
 
-	firstSundayOfNextMonth := lastDayOfTheMonth.AddDate(0, 0, 1)
-	for firstSundayOfNextMonth.Weekday() != time.Sunday {
-		firstSundayOfNextMonth = firstSundayOfNextMonth.AddDate(0, 0, 1)
+	// determine week boundaries and labels
+	startWD, endWD := time.Sunday, time.Saturday
+	labels := []string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
+	if m.MondayFirst {
+		startWD, endWD = time.Monday, time.Sunday
+		labels = []string{"Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"}
 	}
 
-	day := lastSundayOfLastMonth
-	if firstDayOfTheMonth.Weekday() == time.Sunday {
-		day = firstDayOfTheMonth
+	// find start and end dates for calendar grid
+	start := firstDayOfTheMonth
+	for start.Weekday() != startWD {
+		start = start.AddDate(0, 0, -1)
+	}
+	end := lastDayOfTheMonth
+	for end.Weekday() != endWD {
+		end = end.AddDate(0, 0, 1)
 	}
 
-	weekHeaders := []string{"Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"}
-	for i, h := range weekHeaders {
-		weekHeaders[i] = m.Styles.Date.Copy().Inherit(m.Styles.HeaderText).Render(h)
+	// render week headers
+	for i, h := range labels {
+		labels[i] = m.Styles.Date.Copy().Inherit(m.Styles.HeaderText).Render(h)
 	}
 
-	cal := [][]string{weekHeaders}
+	cal := [][]string{labels}
 	j := 1
-
-	for day.Before(firstSundayOfNextMonth) {
+	for d := start; !d.After(end); d = d.AddDate(0, 0, 1) {
 		if j >= len(cal) {
 			cal = append(cal, []string{})
 		}
 		out := "  "
-		if day.Month() == month {
-			out = fmt.Sprintf("%02d", day.Day())
+		if d.Month() == month {
+			out = fmt.Sprintf("%02d", d.Day())
 		}
 
 		style := m.Styles.Date
 		textStyle := m.Styles.Text
-		if !m.Selected {
-			// skip modifications to the date
-		} else if day.Day() == m.Time.Day() && day.Month() == day.Month() && m.Focused == FocusCalendar {
-			textStyle = m.Styles.FocusedText
-		} else if day.Day() == m.Time.Day() && day.Month() == day.Month() {
-			textStyle = m.Styles.SelectedText
+		if m.Selected && d.Day() == m.Time.Day() && d.Month() == month {
+			if m.Focused == FocusCalendar {
+				textStyle = m.Styles.FocusedText
+			} else {
+				textStyle = m.Styles.SelectedText
+			}
 		}
 
 		out = style.Copy().Inherit(textStyle.Copy()).Render(out)
 		cal[j] = append(cal[j], out)
 
-		if day.Weekday() == time.Saturday {
+		if d.Weekday() == endWD {
 			j++
 		}
-		day = day.AddDate(0, 0, 1)
 	}
 
 	rows := []string{title}
