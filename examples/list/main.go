@@ -4,10 +4,10 @@ import (
 	"log"
 	"time"
 
+	datepicker "github.com/bzeiss/bubble-datepicker"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/ethanefung/bubble-datepicker"
 )
 
 var docStyle = lipgloss.NewStyle().Margin(1, 2)

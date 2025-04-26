@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
+	datepicker "github.com/bzeiss/bubble-datepicker"
 	tea "github.com/charmbracelet/bubbletea"
-	datepicker "github.com/ethanefung/bubble-datepicker"
 )
 
 type model struct {
